@@ -29,7 +29,8 @@ def ExpSphere(z,xi,t):
         
     if not np.abs(np.dot(z,xi)) <= 1e-4:
        print(np.abs(np.dot(z,xi)))
-       raise ValueError('xi needs to be in the tangent space at x')
+       ProjTangSpace(z,xi)
+       #raise ValueError('xi needs to be in the tangent space at x')
         
     norm_xi = np.linalg.norm(xi)
     temp = np.cos(t*norm_xi)*z + (np.sin(t*norm_xi)/norm_xi)*xi
@@ -88,6 +89,38 @@ def ConstructLineFunction(z, xi, objfunc, objfunc_prime):
         return np.dot(newvec,fungrad)
     return phi, phi_prime
 
+
+
+
+
+def conjgrad(A, b, x, k):
+    """
+    A function to solve [A]{x} = {b} linear equation system with the 
+    conjugate gradient method.
+    More at: http://en.wikipedia.org/wiki/Conjugate_gradient_method
+    ========== Parameters ==========
+    A : matrix 
+        A real symmetric positive definite matrix.
+    b : vector
+        The right hand side (RHS) vector of the system.
+    x : vector
+        The starting guess for the solution.
+    """  
+    r = b - np.dot(A, x)
+    p = r
+    rsold = np.dot(np.transpose(r), r)
+    
+    for i in range(k):
+        Ap = np.dot(A, p)
+        alpha = rsold / np.dot(np.transpose(p), Ap)
+        x = x + np.dot(alpha, p)
+        r = r - np.dot(alpha, Ap)
+        rsnew = np.dot(np.transpose(r), r)
+        if np.sqrt(rsnew) < 1e-8:
+            break
+        p = r + (rsnew/rsold)*p
+        rsold = rsnew
+    return x
 
     
     

@@ -222,3 +222,109 @@ class HadRGD_BB(BaseOptimizer):
         self._alpha = np.maximum(np.minimum(alpha_BB, 30.0), 1e-10)
         
         return tempval
+    
+
+class HadNewton(BaseOptimizer):
+    '''
+    Class for Newton on the sphere with non-monotone line
+    search.
+    '''
+    
+    def __init__(self, objfunc, objfuncGrad, objfuncHess, alpha_def, z0):
+        '''
+        Parameters as in Wen & Yin: A feasible method for optimization with 
+        orthogonality constraints.
+        '''
+        self._objfunc = objfunc
+        self._objfuncGrad = objfuncGrad
+        self._objfuncHess = objfuncHess
+        self._alpha = alpha_def
+        self._z = z0
+        self._k = 0 # iterate counter
+        self._fVals = [self._objfunc(self._z)]
+        self._iterates = [self._z]
+        self._gradients = [ProjTangSpace(self._z, self._objfuncGrad(self._z))]
+        
+        
+    def step(self):
+        '''
+        Take a single step.
+        '''
+        z_k = self._iterates[self._k]
+        grad = ProjTangSpace(z_k, self._objfuncGrad(z_k))
+        hess = (np.eye(len(z_k)) - np.outer(z_k,z_k)) @ self._objfuncHess(z_k) @ (np.eye(len(z_k)) - np.outer(z_k,z_k))
+
+        # Compute step direction
+        p = ProjTangSpace(z_k, np.linalg.lstsq(hess, -grad)[0])
+
+
+        z_k_plus_1 = ExpSphere(z_k, p, self._alpha)
+
+        if self._objfunc(z_k_plus_1) > self._objfunc(z_k): # If newton is worse, use grad
+            z_k_plus_1 = ExpSphere(z_k, grad, self._alpha)
+
+        self._iterates.append(z_k_plus_1)
+        newGrad = ProjTangSpace(z_k_plus_1, self._objfuncGrad(z_k_plus_1))
+        self._gradients.append(newGrad)
+        self._z = z_k_plus_1
+        tempval = self._objfunc(z_k_plus_1)
+        self._fVals.append(tempval)
+        
+        # Update various parameters
+        self._k +=1
+       
+        return tempval
+    
+
+class HadNewton2(BaseOptimizer):
+    '''
+    Class for Newton on the sphere with non-monotone line
+    search.
+    '''
+    
+    def __init__(self, objfunc, objfuncGrad, objfuncHess, alpha_def, z0):
+        '''
+        Parameters as in Wen & Yin: A feasible method for optimization with 
+        orthogonality constraints.
+        '''
+        self._objfunc = objfunc
+        self._objfuncGrad = objfuncGrad
+        self._objfuncHess = objfuncHess
+        self._alpha = alpha_def
+        self._z = z0
+        self._k = 0 # iterate counter
+        self._fVals = [self._objfunc(self._z)]
+        self._iterates = [self._z]
+        self._gradients = [ProjTangSpace(self._z, self._objfuncGrad(self._z))]
+        
+        
+    def step(self):
+        '''
+        Take a single step.
+        '''
+        z_k = self._iterates[self._k]
+        grad = ProjTangSpace(z_k, self._objfuncGrad(z_k))
+        hess = (np.eye(len(z_k)) - np.outer(z_k,z_k)) @ self._objfuncHess(z_k) @ (np.eye(len(z_k)) - np.outer(z_k,z_k))
+
+        hessi = np.eye(len(z_k)) - hess
+
+        
+        # Compute step direction
+        p = ProjTangSpace(z_k, conjgrad(hess, -grad, -2*grad + hess@grad, 1 + int(self._k**1.5)))
+
+        z_k_plus_1 = ExpSphere(z_k, p, self._alpha)
+
+        if self._objfunc(z_k_plus_1) > self._objfunc(z_k): # If newton is worse, use grad
+            z_k_plus_1 = ExpSphere(z_k, grad, self._alpha)
+
+        self._iterates.append(z_k_plus_1)
+        newGrad = ProjTangSpace(z_k_plus_1, self._objfuncGrad(z_k_plus_1))
+        self._gradients.append(newGrad)
+        self._z = z_k_plus_1
+        tempval = self._objfunc(z_k_plus_1)
+        self._fVals.append(tempval)
+        
+        # Update various parameters
+        self._k +=1
+       
+        return tempval
